@@ -11,12 +11,35 @@ class TransitSpec extends FlatSpec with Matchers {
 
   behavior of "transit-scala"
 
-  it should "round-trip a Scala Int" in {
-    val baos = new ByteArrayOutputStream
-    transit.writer(baos, JsonVerbose).write(123)
+  import scala.concurrent.ExecutionContext.Implicits.global
 
-    val bais = new ByteArrayInputStream(baos.toByteArray)
-    transit.reader(bais, JsonVerbose).read().asInstanceOf[Int] should be(123)
+  it should "round-trip a Scala Boolean" in {
+    checkRoundTrip(true)
+  }
+
+  it should "round-trip a Scala Long" in {
+    checkRoundTrip[Long](123L)
+  }
+
+  it should "round-trip a Java Long" in {
+    checkRoundTrip[java.lang.Long](123: java.lang.Long)
+  }
+
+  it should "round-trip a Scala Int" in {
+    checkRoundTrip[Int](123)
+  }
+
+  def checkRoundTrip[A](value: A) = {
+    for (format <- Seq(Msgpack, Json, JsonVerbose)) {
+      val baos = new ByteArrayOutputStream
+      for {
+        _ <- transit.writer(baos, format).write(value)
+        bais = new ByteArrayInputStream(baos.toByteArray)
+        result <- transit.reader(bais, format).read[A]()
+      } {
+        result should be(value)
+      }
+    }
   }
 
 }
