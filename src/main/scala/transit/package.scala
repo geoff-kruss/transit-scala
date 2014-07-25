@@ -1,6 +1,12 @@
-import com.cognitect.transit.TransitFactory
+import com.cognitect.transit.{WriteHandler, ReadHandler, TransitFactory}
+
+import transit.ReadHandlers.SetReadHandler
+import transit.WriteHandlers._
+
 import java.io.{InputStream, OutputStream}
+
 import scala.concurrent.ExecutionContext
+import scala.collection.JavaConverters._
 
 package object transit {
 
@@ -10,12 +16,14 @@ package object transit {
   case object JsonVerbose extends Format
 
   def writer(out: OutputStream, format: Format)(implicit exec: ExecutionContext): Writer = {
-    val underlying = TransitFactory.writer(convertFormat(format), out)
+    val customWriteHandlers = Map[Class[_], WriteHandler](classOf[Set[_]] -> SetWriteHandler).asJava
+    val underlying = TransitFactory.writer(convertFormat(format), out, customWriteHandlers)
     new Writer(underlying)
   }
 
   def reader(in: InputStream, format: Format)(implicit exec: ExecutionContext): Reader = {
-    val underlying = TransitFactory.reader(convertFormat(format), in)
+    val customReadHandlers = Map[String, ReadHandler]("set" -> SetReadHandler).asJava
+    val underlying = TransitFactory.reader(convertFormat(format), in, customReadHandlers)
     new Reader(underlying)
   }
 
